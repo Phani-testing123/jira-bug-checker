@@ -141,18 +141,18 @@ def trigger_slack(issues, dry_run=True, force=False, message_type="initial"):
                 f"Just a gentle reminder that some details are still needed for your bug report: *<{jira_url}|{issue_key}>*.\n\n"
                 f"*Pending items:*\n"
                 + "\n".join(f"• _{f}_" for f in details["missing_fields"]) +
-                "\n\nProviding these details helps our team investigate and resolve the issue faster. "
+                "\n\nProviding these details helps team investigate and resolve the issue faster. "
                 "Thank you for your help! 🙏"
             )
         else:
             status = "sent"
             message = (
                 f"👋 *Hi {details['reporter_name']}, thanks for reporting {issue_key}!* \n"
-                f"To help our team triage and address this bug effectively, we noticed a few fields were left empty: *<{jira_url}|{issue_key}>*.\n\n"
+                f"To help team triage and address this bug effectively, we noticed a few fields were left empty: *<{jira_url}|{issue_key}>*.\n\n"
                 f"*Required details:*\n"
                 + "\n".join(f"• _{f}_" for f in details["missing_fields"]) +
                 "\n\nCould you please take a moment to add these whenever you have a chance? "
-                "We appreciate your contribution to our project quality! ✨"
+                "We appreciate your contribution to the project quality! ✨"
             )
 
         # Send the message
