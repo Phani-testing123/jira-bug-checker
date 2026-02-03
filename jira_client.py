@@ -28,7 +28,7 @@ def fetch_bugs(jql=None):
         )
 
     # ✅ CORRECT Jira endpoint
-    url = f"{JIRA_BASE_URL}/rest/api/3/search"
+    url = f"{JIRA_BASE_URL}/rest/api/3/search/jql"
 
     headers = {
         "Accept": "application/json",
