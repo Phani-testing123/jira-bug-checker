@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jira Bug Quality Checker</title>
+    <title>Jira Bug Quality Guard</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -56,6 +56,7 @@
             font-size: 0.9rem; 
             border: 2px solid var(--border-color);
             transition: border-color 0.2s ease;
+            resize: vertical;
         }
         textarea:focus { border-color: var(--jira-blue); box-shadow: 0 0 0 3px rgba(0,82,204,0.15); outline: none; }
 
@@ -95,6 +96,16 @@
     </style>
 
     <script>
+        // Prevent Unbounded JQL Error
+        function validateJQL() {
+            const jql = document.getElementById('jql-input').value.trim();
+            if (!jql) {
+                alert("⚠️ Please enter a JQL query. Jira does not allow empty (unbounded) searches.");
+                return false;
+            }
+            return true;
+        }
+
         function confirmResendSelected() {
             const checked = document.querySelectorAll('.bug-check:checked').length;
             if (checked === 0) {
@@ -128,11 +139,12 @@
         <div class="card p-4 shadow-sm mb-4">
             <div class="mb-3">
                 <label class="form-label fw-bold small text-uppercase text-muted">JQL Query</label>
-                <textarea name="jql" class="form-control" rows="2" placeholder="project = 'PROJ'...">{{ jql }}</textarea>
+                <textarea id="jql-input" name="jql" class="form-control" rows="2" 
+                          placeholder="project = 'PROJ' AND issuetype = Bug..." required>{{ jql }}</textarea>
             </div>
 
             <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-primary" name="action" value="fetch">
+                <button class="btn btn-primary" name="action" value="fetch" onclick="return validateJQL()">
                     <i class="fa-solid fa-sync"></i> Fetch Issues
                 </button>
                 <div class="vr mx-2 d-none d-lg-block"></div>
@@ -209,7 +221,7 @@
                             </a>
                         </td>
 
-                        <td class="summary-cell">{{ bug.fields.summary }}</td>
+                        <td class="summary-cell fw-medium">{{ bug.fields.summary }}</td>
 
                         <td>
                             <div class="d-flex align-items-center gap-2">
