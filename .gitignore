@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Runtime files
+notified.json
+jira_bugs.xlsx
+ui/jira_bugs.xlsx
+
+# Env
+.env
