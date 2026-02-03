@@ -19,11 +19,11 @@
             font-family: 'Inter', sans-serif;
             color: #172b4d;
         }
-        .card { border: none; border-radius: 12px; transition: transform 0.2s; }
+        .card { border: none; border-radius: 12px; }
         .shadow-sm { box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important; }
         
         /* Fixed Header Table */
-        .table-responsive { max-height: 600px; overflow-y: auto; }
+        .table-responsive { max-height: 700px; overflow-y: auto; }
         thead th { position: sticky; top: 0; background: white !important; z-index: 10; border-bottom: 2px solid #dee2e6 !important; }
 
         textarea { font-family: 'Fira Code', monospace; font-size: 0.9rem; border-radius: 8px; border: 1px solid #dfe1e6; }
@@ -36,8 +36,15 @@
         .bug-key { color: var(--jira-blue); font-weight: 700; }
         .bug-key:hover { text-decoration: underline; }
         
-        /* Custom Checkbox */
         .form-check-input:checked { background-color: var(--jira-blue); border-color: var(--jira-blue); }
+
+        /* Summary Column Styling */
+        .summary-cell {
+            min-width: 300px;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.4;
+        }
     </style>
 
     <script>
@@ -56,25 +63,19 @@
 <div class="container py-5">
 
     <div class="row mb-4 align-items-center">
-        <div class="col-md-8">
+        <div class="col-md-12">
             <h2 class="fw-bold d-flex align-items-center gap-3">
                 <i class="fa-solid fa-bug-slash text-primary"></i> 
                 Jira Bug Quality Guard
             </h2>
             <p class="text-muted mb-0">Automated field validation and Slack reporting for QA hygiene.</p>
         </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-            <span class="badge bg-white text-dark shadow-sm border">Phase 2.0 • Pro UI</span>
-        </div>
     </div>
 
     <form method="post">
         <div class="card p-4 shadow-sm mb-4">
             <div class="mb-3">
-                <label class="form-label fw-bold d-flex justify-content-between">
-                    JQL Query
-                    <small class="text-muted font-monospace">project = "APP" AND issuetype = Bug</small>
-                </label>
+                <label class="form-label fw-bold">JQL Query</label>
                 <textarea name="jql" class="form-control" rows="3" placeholder="Enter Jira Query Language here...">{{ jql }}</textarea>
             </div>
 
@@ -156,13 +157,14 @@
                             </a>
                         </td>
 
-                        <td class="text-truncate" style="max-width: 250px;">{{ bug.fields.summary }}</td>
+                        <td class="summary-cell">{{ bug.fields.summary }}</td>
+
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width:24px; height:24px; font-size:10px;">
                                     {{ bug.fields.reporter.displayName[0] }}
                                 </div>
-                                {{ bug.fields.reporter.displayName }}
+                                <span class="text-nowrap">{{ bug.fields.reporter.displayName }}</span>
                             </div>
                         </td>
 
