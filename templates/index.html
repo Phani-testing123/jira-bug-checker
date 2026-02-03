@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jira Bug Quality Guard</title>
+    <title>Jira Bug Quality Checker</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,93 +12,86 @@
     <style>
         :root {
             --jira-blue: #0052CC;
-            --jira-bg: #F4F5F7;
-            --text-main: #172B4D;
-            --border-color: #DFE1E6;
-            --transition-speed: 0.2s;
+            --soft-bg: #f4f5f7;
+            --text-dark: #172b4d;
+            --border-color: #dfe1e6;
         }
-
+        
         body { 
-            background-color: var(--jira-bg); 
+            background-color: var(--soft-bg); 
             font-family: 'Inter', sans-serif;
-            color: var(--text-main);
+            color: var(--text-dark);
             -webkit-font-smoothing: antialiased;
         }
 
-        /* ── SMOOTH SCROLL & TABLE ── */
+        .card { border: 1px solid var(--border-color); border-radius: 12px; transition: box-shadow 0.2s ease; }
+        .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important; }
+        
+        /* ── SMOOTH SCROLLING TABLE ── */
         .table-responsive { 
-            max-height: 70vh; 
+            max-height: 700px; 
             overflow-y: auto; 
             scrollbar-width: thin;
-            border-radius: 0 0 12px 12px;
+            overscroll-behavior: contain;
         }
         
         thead th { 
             position: sticky; 
             top: 0; 
-            background: #ffffff !important; 
-            z-index: 20; 
+            background: white !important; 
+            z-index: 10; 
             box-shadow: inset 0 -1px 0 var(--border-color);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.02em;
             padding: 12px 16px !important;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
         }
 
-        tr { transition: background-color var(--transition-speed); }
-        tr:hover { background-color: #F0F4FF !important; }
+        /* ── FAST TRANSITIONS ── */
+        tr { transition: background-color 0.15s ease; }
+        tr:hover { background-color: #f0f4ff !important; }
 
-        /* ── CARDS & BUTTONS ── */
-        .card { border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
-        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); }
+        textarea { 
+            font-family: 'Fira Code', 'Courier New', monospace; 
+            font-size: 0.9rem; 
+            border: 2px solid var(--border-color);
+            transition: border-color 0.2s ease;
+        }
+        textarea:focus { border-color: var(--jira-blue); box-shadow: 0 0 0 3px rgba(0,82,204,0.15); outline: none; }
 
         .btn { 
-            border-radius: 6px; 
-            font-weight: 500; 
-            padding: 8px 16px;
+            border-radius: 8px; 
+            font-weight: 600; 
             display: inline-flex; 
             align-items: center; 
             gap: 8px; 
-            transition: all var(--transition-speed) ease-in-out;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
         }
-
-        .btn-primary { background: var(--jira-blue); border: none; }
-        .btn-primary:hover { background: #0747A6; transform: translateY(-1px); }
+        .btn:active { transform: scale(0.97); }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         
-        .btn-outline-secondary { color: #42526E; border-color: var(--border-color); }
-        .btn-outline-secondary:hover { background: #EBECF0; color: #172B4D; border-color: var(--border-color); }
-
-        /* ── BADGES & CELLS ── */
-        .badge { 
-            font-weight: 600; 
-            padding: 6px 10px; 
-            border-radius: 4px; 
-            letter-spacing: -0.01em; 
+        /* ── BADGES & DATA ── */
+        .badge { font-weight: 600; padding: 0.5em 0.8em; border-radius: 4px; }
+        .bug-key { 
+            color: var(--jira-blue); 
+            font-weight: 700; 
+            background: rgba(0, 82, 204, 0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
         }
         
         .summary-cell {
             min-width: 350px;
-            font-size: 0.95rem;
+            white-space: normal;
+            word-break: break-word;
             line-height: 1.5;
             color: #253858;
         }
 
-        .bug-key { 
-            background: #E6EFFC; 
-            color: var(--jira-blue); 
-            padding: 2px 8px; 
-            border-radius: 4px; 
-            font-weight: 600;
-            font-size: 0.85rem;
+        .avatar-init {
+            width: 26px; height: 26px; font-size: 11px;
+            background: linear-gradient(135deg, #6b778c, #42526e);
         }
-
-        textarea { 
-            border: 2px solid var(--border-color); 
-            resize: vertical;
-            transition: border-color 0.2s;
-        }
-        textarea:focus { border-color: var(--jira-blue) !important; box-shadow: none !important; }
     </style>
 
     <script>
@@ -112,16 +105,8 @@
         }
 
         function updateCount() {
-            const checked = document.querySelectorAll('.bug-check:checked');
-            document.getElementById('check-count').innerText = checked.length;
-            
-            // Visual feedback: Highlight selection bar
-            const header = document.getElementById('list-header');
-            if (checked.length > 0) {
-                header.classList.add('bg-primary-subtle');
-            } else {
-                header.classList.remove('bg-primary-subtle');
-            }
+            const count = document.querySelectorAll('.bug-check:checked').length;
+            document.getElementById('check-count').innerText = count;
         }
     </script>
 </head>
@@ -129,96 +114,60 @@
 <body>
 <div class="container py-4">
 
-    <header class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold mb-1">
-                <i class="fa-solid fa-shield-virus text-primary me-2"></i>Bug Quality Guard
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold d-flex align-items-center gap-2 mb-1">
+                <i class="fa-solid fa-shield-check text-primary"></i> 
+                Jira Bug Quality Guard
             </h2>
-            <p class="text-muted small mb-0">Maintaining QA hygiene for your Jira project.</p>
+            <p class="text-muted mb-0">Automated field validation and Slack reporting for QA hygiene.</p>
         </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()">
-                <i class="fa-solid fa-sync"></i> Refresh
-            </button>
-        </div>
-    </header>
+    </div>
 
     <form method="post">
-        
-        {% if bugs %}
-        {% set total_bugs = bugs|length %}
-        {% set missing_count = 0 %}
-        {% for b in bugs %}
-            {% if not b.environment or not b.fields.priority or not b.severity %}
-                {% set missing_count = missing_count + 1 %}
-            {% endif %}
-        {% endfor %}
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="stat-card shadow-sm">
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Total Issues</div>
-                    <h3 class="fw-bold mb-0 text-primary">{{ total_bugs }}</h3>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card shadow-sm">
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Missing Info</div>
-                    <h3 class="fw-bold mb-0 text-danger">{{ missing_count }}</h3>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card shadow-sm border-success">
-                    <div class="text-muted small fw-bold text-uppercase mb-1">Health Score</div>
-                    <h3 class="fw-bold mb-0 text-success">
-                        {{ ((total_bugs - missing_count) / total_bugs * 100) | round | int }}%
-                    </h3>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
         <div class="card p-4 shadow-sm mb-4">
             <div class="mb-3">
-                <label class="form-label fw-bold small text-uppercase">JQL Filter</label>
-                <textarea name="jql" class="form-control" rows="2" placeholder="e.g. project = 'PROJ' AND issuetype = Bug">{{ jql }}</textarea>
+                <label class="form-label fw-bold small text-uppercase text-muted">JQL Query</label>
+                <textarea name="jql" class="form-control" rows="2" placeholder="project = 'PROJ'...">{{ jql }}</textarea>
             </div>
 
             <div class="d-flex flex-wrap gap-2">
                 <button class="btn btn-primary" name="action" value="fetch">
-                    <i class="fa-solid fa-magnifying-glass"></i> Fetch Data
+                    <i class="fa-solid fa-sync"></i> Fetch Issues
                 </button>
+                <div class="vr mx-2 d-none d-lg-block"></div>
                 
-                <div class="btn-group">
-                    <button class="btn btn-outline-secondary" name="action" value="slack_preview" {% if not bugs %}disabled{% endif %}>
-                        Dry-Run
-                    </button>
-                    <button class="btn btn-danger" name="action" value="slack_send" 
-                            onclick="return confirm('Send Slack DMs to ALL bugs?')" {% if not bugs %}disabled{% endif %}>
-                        <i class="fa-solid fa-bolt"></i> Notify All
-                    </button>
-                </div>
+                <button class="btn btn-outline-secondary" name="action" value="slack_preview" {% if not bugs %}disabled{% endif %}>
+                    Dry-Run
+                </button>
+
+                <button class="btn btn-danger" name="action" value="slack_send" 
+                        onclick="return confirm('Send Slack DMs to ALL bugs?')" {% if not bugs %}disabled{% endif %}>
+                    <i class="fa-solid fa-paper-plane"></i> Notify All
+                </button>
 
                 <button class="btn btn-warning text-dark" name="action" value="slack_resend" 
                         onclick="return confirmResendSelected()" {% if not bugs %}disabled{% endif %}>
-                    <i class="fa-solid fa-rotate-right"></i> Resend Selected
+                    <i class="fa-solid fa-reply-all"></i> Resend Selected
                 </button>
 
                 <button class="btn btn-success ms-auto" name="action" value="export" {% if not bugs %}disabled{% endif %}>
-                    <i class="fa-solid fa-file-export"></i> Export CSV
+                    <i class="fa-solid fa-file-excel"></i> Export
                 </button>
             </div>
         </div>
 
         {% if result_message %}
-            <div class="alert alert-info border-0 shadow-sm mb-4">
-                <i class="fa-solid fa-circle-info me-2"></i> {{ result_message }}
+            <div class="alert alert-primary border-0 shadow-sm d-flex align-items-center gap-3 mb-4" role="alert">
+                <i class="fa-solid fa-circle-info fa-lg"></i>
+                <div class="fw-medium">{{ result_message }}</div>
             </div>
         {% endif %}
 
         {% if bugs and bugs|length > 0 %}
-        <div class="card shadow-sm">
-            <div id="list-header" class="card-header bg-white py-3 d-flex justify-content-between align-items-center transition">
-                <span class="fw-bold"><i class="fa-solid fa-table-list me-2 text-muted"></i> Issues ({{ bugs|length }})</span>
+        <div class="card shadow-sm overflow-hidden border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                <span class="fw-bold text-secondary"><i class="fa-solid fa-list-check me-2"></i> Issue List ({{ bugs|length }})</span>
                 <span class="badge bg-dark rounded-pill">Selected: <span id="check-count">0</span></span>
             </div>
 
@@ -226,17 +175,17 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                     <tr>
-                        <th width="40" class="ps-4">
+                        <th class="ps-4" width="40">
                             <input class="form-check-input" type="checkbox"
                                    onclick="document.querySelectorAll('.bug-check').forEach(cb => cb.checked = this.checked); updateCount()">
                         </th>
-                        <th width="120">Ticket</th>
+                        <th width="120">Key</th>
                         <th>Summary</th>
-                        <th width="180">Reporter</th>
-                        <th width="100">Priority</th>
-                        <th width="100">Severity</th>
-                        <th width="180">Status</th>
-                        <th width="120">Slack</th>
+                        <th>Reporter</th>
+                        <th>Priority</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Notification</th>
                     </tr>
                     </thead>
 
@@ -260,51 +209,50 @@
                             </a>
                         </td>
 
-                        <td class="summary-cell fw-medium">{{ bug.fields.summary }}</td>
+                        <td class="summary-cell">{{ bug.fields.summary }}</td>
 
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" 
-                                     style="width:28px; height:28px; font-size:11px; background: linear-gradient(45deg, #0052CC, #2684FF);">
+                                <div class="rounded-circle avatar-init text-white d-flex align-items-center justify-content-center fw-bold">
                                     {{ bug.fields.reporter.displayName[0] }}
                                 </div>
-                                <span class="small fw-semibold text-secondary">{{ bug.fields.reporter.displayName }}</span>
+                                <span class="text-nowrap small fw-medium">{{ bug.fields.reporter.displayName }}</span>
                             </div>
                         </td>
 
                         <td>
                             {% if priority %}
-                                <span class="badge bg-primary-subtle text-primary">{{ priority }}</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ priority }}</span>
                             {% else %}
-                                <span class="badge bg-danger-subtle text-danger">EMPTY</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Missing</span>
                             {% endif %}
                         </td>
 
                         <td>
                             {% if severity %}
-                                <span class="badge bg-info-subtle text-info">{{ severity }}</span>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">{{ severity }}</span>
                             {% else %}
-                                <span class="badge bg-danger-subtle text-danger">EMPTY</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Missing</span>
                             {% endif %}
                         </td>
 
                         <td>
                             {% if missing %}
-                                <span class="text-danger small fw-bold">
-                                    <i class="fa-solid fa-circle-exclamation me-1"></i> Missing {{ missing | join(", ") }}
+                                <span class="text-warning fw-bold small">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ missing | join(", ") }}
                                 </span>
                             {% else %}
-                                <span class="text-success small fw-bold">
-                                    <i class="fa-solid fa-circle-check me-1"></i> Compliant
+                                <span class="text-success fw-bold small">
+                                    <i class="fa-solid fa-check-circle me-1"></i> Perfect
                                 </span>
                             {% endif %}
                         </td>
 
                         <td>
                             {% if bug.notify_status == "sent" %}
-                                <span class="text-success small fw-bold"><i class="fa-solid fa-check"></i> Sent</span>
+                                <span class="text-success small fw-bold"><i class="fa-solid fa-check-double"></i> Sent</span>
                             {% elif bug.notify_status == "reminder" %}
-                                <span class="text-warning small fw-bold"><i class="fa-solid fa-clock"></i> Reminded</span>
+                                <span class="text-warning small fw-bold"><i class="fa-solid fa-clock-rotate-left"></i> Reminder</span>
                             {% else %}
                                 <span class="text-muted small">--</span>
                             {% endif %}
