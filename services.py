@@ -7,6 +7,41 @@ from slack_client import get_user_id_by_email, send_dm
 
 NOTIFIED_FILE = "notified.json"
 
+# ─────────────────────────────────────────────
+# Helper: Extract Jira Fields Consistently
+# ─────────────────────────────────────────────
+def _extract_issue_details(issue):
+    """
+    Internal helper to parse fields consistently across all functions.
+    Ensures that logic for 'Missing' fields is synchronized.
+    """
+    fields = issue.get("fields", {})
+    
+    # 1. Environment
+    env = adf_to_text(fields.get("environment"))
+    
+    # 2. Priority
+    prio_obj = fields.get("priority")
+    prio = prio_obj.get("name") if prio_obj and prio_obj.get("name") != "None" else None
+    
+    # 3. Severity (Checks custom field or direct attribute)
+    sev_field = fields.get("customfield_11010")
+    sev = sev_field.get("value") if isinstance(sev_field, dict) else issue.get("severity")
+
+    # Determine which are missing
+    missing = []
+    if not env: missing.append("Environment")
+    if not prio: missing.append("Priority")
+    if not sev: missing.append("Severity")
+
+    return {
+        "env": env,
+        "prio": prio,
+        "sev": sev,
+        "missing_fields": missing,
+        "reporter_email": fields.get("reporter", {}).get("emailAddress"),
+        "reporter_name": fields.get("reporter", {}).get("displayName", "there")
+    }
 
 # ─────────────────────────────────────────────
 # Notified tracking
@@ -15,44 +50,32 @@ def load_notified():
     if not os.path.exists(NOTIFIED_FILE):
         return {}
 
-    with open(NOTIFIED_FILE, "r") as f:
-        data = json.load(f)
+    try:
+        with open(NOTIFIED_FILE, "r") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
 
-    # 🔄 Backward compatibility (old list format)
+    # 🔄 Backward compatibility
     if isinstance(data, list):
         return {k: {"status": "sent", "last_sent": None} for k in data}
 
     return data
 
-
 def save_notified(notified):
     with open(NOTIFIED_FILE, "w") as f:
         json.dump(notified, f, indent=2)
 
-
-# ✅ NEW: expose status cleanly for UI / app layer
 def get_notification_status(issue_key):
-    """
-    Returns one of:
-    - "not_notified"
-    - "sent"
-    - "reminder"
-    """
     notified = load_notified()
     info = notified.get(issue_key)
-
-    if not info:
-        return "not_notified"
-
-    return info.get("status", "sent")
-
+    return info.get("status", "sent") if info else "not_notified"
 
 # ─────────────────────────────────────────────
 # Jira fetch
 # ─────────────────────────────────────────────
 def get_bugs(jql):
     return fetch_bugs(jql)
-
 
 # ─────────────────────────────────────────────
 # Missing field detection
@@ -62,36 +85,14 @@ def preview_missing_fields(issues):
     stats = {"environment": 0, "priority": 0, "severity": 0}
 
     for issue in issues:
-        fields = issue.get("fields", {})
-
-        environment = adf_to_text(fields.get("environment"))
-
-        priority_obj = fields.get("priority")
-        priority = (
-            priority_obj if priority_obj and priority_obj.get("name") != "None" else None
-        )
-
-        severity_field = fields.get("customfield_11010")
-        severity = (
-            severity_field.get("value") if isinstance(severity_field, dict) else None
-        )
-
-        missing = False
-        if not environment:
-            stats["environment"] += 1
-            missing = True
-        if not priority:
-            stats["priority"] += 1
-            missing = True
-        if not severity:
-            stats["severity"] += 1
-            missing = True
-
-        if missing:
+        details = _extract_issue_details(issue)
+        
+        if details["missing_fields"]:
+            for field in details["missing_fields"]:
+                stats[field.lower()] += 1
             results.append(issue)
 
     return results, stats
-
 
 # ─────────────────────────────────────────────
 # Slack notification (INITIAL + REMINDER)
@@ -100,87 +101,72 @@ def trigger_slack(issues, dry_run=True, force=False, message_type="initial"):
     """
     dry_run=True   → preview only (NO Slack, NO dedupe)
     force=True     → resend even if already notified
-    message_type:
-        - initial
-        - reminder
+    message_type: 'initial' or 'reminder'
     """
     notified = load_notified()
-    sent = []
+    sent_keys = []
 
     for issue in issues:
         issue_key = issue.get("key")
-
-        # 🔒 DEDUPE ONLY FOR REAL INITIAL SEND
+        
+        # 🔒 DEDUPE: Skip if already notified (unless force or dry_run)
         if not dry_run and not force and issue_key in notified:
             continue
 
-        fields = issue.get("fields", {})
-        reporter = fields.get("reporter", {})
-        email = reporter.get("emailAddress")
-        name = reporter.get("displayName", "there")
-
-        environment = adf_to_text(fields.get("environment"))
-
-        priority_obj = fields.get("priority")
-        priority = (
-            priority_obj if priority_obj and priority_obj.get("name") != "None" else None
-        )
-
-        severity_field = fields.get("customfield_11010")
-        severity = (
-            severity_field.get("value") if isinstance(severity_field, dict) else None
-        )
-
-        missing_fields = []
-        if not environment:
-            missing_fields.append("Environment")
-        if not priority:
-            missing_fields.append("Priority")
-        if not severity:
-            missing_fields.append("Severity")
-
-        if not email or not missing_fields:
+        details = _extract_issue_details(issue)
+        
+        # Skip if no email found or if the bug is actually complete
+        if not details["reporter_email"] or not details["missing_fields"]:
             continue
 
-        # ── DRY RUN ───────────────────────────
+        # ── DRY RUN LOGIC ─────────────────────
         if dry_run: 
             if issue_key not in notified:
-                sent.append(issue_key)
+                sent_keys.append(issue_key)
             continue
 
-        # ── REAL SEND ─────────────────────────
-        user_id = get_user_id_by_email(email)
+        # ── REAL SEND LOGIC ───────────────────
+        user_id = get_user_id_by_email(details["reporter_email"])
         if not user_id:
             continue
 
-        if message_type == "reminder":
-            message = (
-                f"⏰ Hi {name},\n"
-                f"Reminder: Jira bug *{issue_key}* is still missing:\n"
-                + "\n".join(f"- {f}" for f in missing_fields) +
-                "\n\nPlease update it when possible 🙏"
-            )
-            status = "reminder"
-        else:
-            message = (
-                f"👋 Hi {name},\n"
-                f"Your Jira bug *{issue_key}* is missing:\n"
-                + "\n".join(f"- {f}" for f in missing_fields) +
-                "\n\nPlease update it. Thanks 🙏"
-            )
-            status = "sent"
+        jira_url = f"https://rbictg.atlassian.net/browse/{issue_key}"
 
+        # Polite & Professional Messaging
+        if message_type == "reminder":
+            status = "reminder"
+            message = (
+                f"👋 *Quick follow-up regarding {issue_key}*\n"
+                f"Hi {details['reporter_name']}, hope you're having a good day. "
+                f"Just a gentle reminder that some details are still needed for your bug report: *<{jira_url}|{issue_key}>*.\n\n"
+                f"*Pending items:*\n"
+                + "\n".join(f"• _{f}_" for f in details["missing_fields"]) +
+                "\n\nProviding these details helps our team investigate and resolve the issue faster. "
+                "Thank you for your help! 🙏"
+            )
+        else:
+            status = "sent"
+            message = (
+                f"👋 *Hi {details['reporter_name']}, thanks for reporting {issue_key}!* \n"
+                f"To help our team triage and address this bug effectively, we noticed a few fields were left empty: *<{jira_url}|{issue_key}>*.\n\n"
+                f"*Required details:*\n"
+                + "\n".join(f"• _{f}_" for f in details["missing_fields"]) +
+                "\n\nCould you please take a moment to add these whenever you have a chance? "
+                "We appreciate your contribution to our project quality! ✨"
+            )
+
+        # Send the message
         send_dm(user_id, message)
 
+        # Update tracking state
         notified[issue_key] = {
             "status": status,
             "last_sent": datetime.utcnow().isoformat()
         }
+        sent_keys.append(issue_key)
 
-        sent.append(issue_key)
-
-    # Save ONLY after real sends
+    # Save tracking file ONLY after real sends
     if not dry_run:
         save_notified(notified)
 
-    return sent
+    return sent_keys
