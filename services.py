@@ -143,8 +143,9 @@ def trigger_slack(issues, dry_run=True, force=False, message_type="initial"):
             continue
 
         # ── DRY RUN ───────────────────────────
-        if dry_run:
-            sent.append(issue_key)
+        if dry_run: 
+            if issue_key not in notified:
+                sent.append(issue_key)
             continue
 
         # ── REAL SEND ─────────────────────────
