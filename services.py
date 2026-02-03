@@ -74,13 +74,17 @@ def preview_missing_fields(issues):
 
 
 # ─────────────────────────────────────────────
-# Slack notification (FINAL, SAFE)
+# Slack notification (ENHANCED, SAFE)
 # ─────────────────────────────────────────────
-def trigger_slack(issues, dry_run=True, force=False):
+def trigger_slack(issues, dry_run=True, force=False, message_type="initial"):
     """
-    dry_run=True  → preview only (NO Slack, NO dedupe)
-    force=True    → resend even if already notified
+    dry_run=True   → preview only (NO Slack, NO dedupe)
+    force=True     → resend even if already notified
+    message_type:
+        - "initial"  → first-time message
+        - "reminder" → follow-up reminder
     """
+
     notified = load_notified()
     sent = []
 
@@ -123,22 +127,32 @@ def trigger_slack(issues, dry_run=True, force=False):
         if not email or not missing_fields:
             continue
 
-        # Preview / Send decision
+        # ── DRY RUN ───────────────────────────
         if dry_run:
             sent.append(issue_key)
             continue
 
-        # REAL SEND
+        # ── REAL SEND ─────────────────────────
         user_id = get_user_id_by_email(email)
         if not user_id:
             continue
 
-        message = (
-            f"👋 Hi {name},\n"
-            f"Your Jira bug *{issue_key}* is missing:\n"
-            + "\n".join(f"- {f}" for f in missing_fields) +
-            "\n\nPlease update it.Thanks 🙏"
-        )
+        # ✉️ Message selection
+        if message_type == "reminder":
+            message = (
+                f"⏰ Hi {name},\n"
+                f"Friendly reminder about Jira bug *{issue_key}* — it’s still missing:\n"
+                + "\n".join(f"- {f}" for f in missing_fields) +
+                "\n\nPlease update this when you get time 🙏\n"
+                "Thanks!"
+            )
+        else:
+            message = (
+                f"👋 Hi {name},\n"
+                f"Your Jira bug *{issue_key}* is missing required field(s):\n"
+                + "\n".join(f"- {f}" for f in missing_fields) +
+                "\n\nPlease update it.Thanks🙏"
+            )
 
         send_dm(user_id, message)
         notified.add(issue_key)
