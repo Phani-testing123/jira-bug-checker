@@ -102,7 +102,7 @@ def index():
                 if bug.get("key") in selected_keys
             ]
 
-            sent = trigger_slack(selected_bugs, dry_run=False, force=True)
+            sent = trigger_slack(selected_bugs, dry_run=False, force=True,message_type="reminder")
             result_message = f"Re-Sent Slack: {len(sent)} bug(s)"
 
     elif action == "export":
