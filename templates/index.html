@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jira Bug Quality Checker</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet">
+
+    <style>
+        body { background-color: #f8f9fa; }
+        textarea { font-family: monospace; }
+        th, td { vertical-align: middle; }
+    </style>
+
+    <script>
+        function confirmResendSelected() {
+            const checked = document.querySelectorAll('.bug-check:checked').length;
+            if (checked === 0) {
+                alert("⚠️ Please select at least one bug to re-send Slack.");
+                return false;
+            }
+            return confirm("Re-send Slack ONLY to selected bugs?");
+        }
+    </script>
+</head>
+
+<body>
+<div class="container mt-4">
+
+    <div class="mb-4">
+        <h2 class="fw-bold">🛠 Jira Bug Quality Checker</h2>
+        <p class="text-muted">
+            Identify bugs with missing Environment, Priority, or Severity
+        </p>
+    </div>
+
+    <!-- ✅ SINGLE FORM (IMPORTANT FIX) -->
+    <form method="post" class="card p-3 shadow-sm">
+
+        <label class="fw-bold mb-2">JQL</label>
+        <textarea name="jql" class="form-control mb-3" rows="4">{{ jql }}</textarea>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn btn-primary" name="action" value="fetch">
+                🔍 Fetch Bugs
+            </button>
+
+            <button class="btn btn-secondary"
+                    name="action"
+                    value="slack_preview"
+                    {% if not bugs or bugs|length == 0 %}disabled{% endif %}>
+                👀 Slack Dry-Run
+            </button>
+
+            <button class="btn btn-danger"
+                    name="action"
+                    value="slack_send"
+                    onclick="return confirm('Send Slack DMs to ALL bugs?')"
+                    {% if not bugs or bugs|length == 0 %}disabled{% endif %}>
+                🚨 Send Slack (All)
+            </button>
+
+            <button class="btn btn-warning"
+                    name="action"
+                    value="slack_resend"
+                    onclick="return confirmResendSelected()"
+                    {% if not bugs or bugs|length == 0 %}disabled{% endif %}>
+                🔁 Re-Send Slack (Selected)
+            </button>
+
+            <button class="btn btn-success"
+                    name="action"
+                    value="export"
+                    {% if not bugs or bugs|length == 0 %}disabled{% endif %}>
+                📊 Export Excel
+            </button>
+        </div>
+
+        {% if result_message %}
+            <div class="alert alert-info shadow-sm">
+                {{ result_message }}
+            </div>
+        {% endif %}
+
+        {% if bugs and bugs|length > 0 %}
+        <div class="card shadow-sm">
+            <div class="card-header fw-bold">
+                🐞 Bugs
+            </div>
+
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th>
+                            <input type="checkbox"
+                                   onclick="document.querySelectorAll('.bug-check').forEach(cb => cb.checked = this.checked)">
+                        </th>
+                        <th>Key</th>
+                        <th>Summary</th>
+                        <th>Reporter</th>
+                        <th>Priority</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for bug in bugs %}
+                    {% set priority =
+                        bug.fields.priority.name
+                        if bug.fields.priority and bug.fields.priority.name != "None"
+                        else None
+                    %}
+                    {% set severity = bug.severity %}
+                    {% set missing = [] %}
+                    {% if not bug.environment %}{% set _ = missing.append("Env") %}{% endif %}
+                    {% if not priority %}{% set _ = missing.append("Priority") %}{% endif %}
+                    {% if not severity %}{% set _ = missing.append("Severity") %}{% endif %}
+
+                    <tr>
+                        <td>
+                            <input type="checkbox"
+                                   class="bug-check"
+                                   name="selected_keys"
+                                   value="{{ bug.key }}">
+                        </td>
+
+                        <td>
+                            <a href="https://rbictg.atlassian.net/browse/{{ bug.key }}"
+                               target="_blank"
+                               class="fw-bold text-decoration-none">
+                                {{ bug.key }}
+                            </a>
+                        </td>
+
+                        <td>{{ bug.fields.summary }}</td>
+                        <td>{{ bug.fields.reporter.displayName }}</td>
+
+                        <td>
+                            {% if priority %}
+                                <span class="badge bg-primary">{{ priority }}</span>
+                            {% else %}
+                                <span class="badge bg-danger">Missing</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if severity %}
+                                <span class="badge bg-info text-dark">{{ severity }}</span>
+                            {% else %}
+                                <span class="badge bg-danger">Missing</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if missing %}
+                                <span class="badge bg-warning text-dark">
+                                    Missing {{ missing | join(", ") }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success">Complete</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </form>
+
+    <div class="text-center text-muted mt-4 mb-3">
+        Internal QA Tool • Phase 1
+    </div>
+
+</div>
+</body>
+</html>
