@@ -36,7 +36,7 @@
         </p>
     </div>
 
-    <!-- ✅ SINGLE FORM (IMPORTANT FIX) -->
+    <!-- ✅ SINGLE FORM -->
     <form method="post" class="card p-3 shadow-sm">
 
         <label class="fw-bold mb-2">JQL</label>
@@ -104,6 +104,7 @@
                         <th>Priority</th>
                         <th>Severity</th>
                         <th>Status</th>
+                        <th>Notified</th> <!-- 🆕 -->
                     </tr>
                     </thead>
 
@@ -162,6 +163,17 @@
                                 </span>
                             {% else %}
                                 <span class="badge bg-success">Complete</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- 🆕 NOTIFICATION STATUS -->
+                        <td>
+                            {% if bug.notify_status == "sent" %}
+                                <span class="badge bg-success">Sent</span>
+                            {% elif bug.notify_status == "reminder" %}
+                                <span class="badge bg-warning text-dark">Reminder Sent</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Not Notified</span>
                             {% endif %}
                         </td>
                     </tr>

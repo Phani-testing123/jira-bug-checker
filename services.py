@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime
 from jira_client import fetch_bugs
 from excel_exporter import adf_to_text
 from slack_client import get_user_id_by_email, send_dm
@@ -8,18 +9,42 @@ NOTIFIED_FILE = "notified.json"
 
 
 # ─────────────────────────────────────────────
-# Notified tracking (dedupe Slack messages)
+# Notified tracking
 # ─────────────────────────────────────────────
 def load_notified():
     if not os.path.exists(NOTIFIED_FILE):
-        return set()
+        return {}
+
     with open(NOTIFIED_FILE, "r") as f:
-        return set(json.load(f))
+        data = json.load(f)
+
+    # 🔄 Backward compatibility (old list format)
+    if isinstance(data, list):
+        return {k: {"status": "sent", "last_sent": None} for k in data}
+
+    return data
 
 
 def save_notified(notified):
     with open(NOTIFIED_FILE, "w") as f:
-        json.dump(list(notified), f)
+        json.dump(notified, f, indent=2)
+
+
+# ✅ NEW: expose status cleanly for UI / app layer
+def get_notification_status(issue_key):
+    """
+    Returns one of:
+    - "not_notified"
+    - "sent"
+    - "reminder"
+    """
+    notified = load_notified()
+    info = notified.get(issue_key)
+
+    if not info:
+        return "not_notified"
+
+    return info.get("status", "sent")
 
 
 # ─────────────────────────────────────────────
@@ -43,55 +68,49 @@ def preview_missing_fields(issues):
 
         priority_obj = fields.get("priority")
         priority = (
-            priority_obj
-            if priority_obj and priority_obj.get("name") != "None"
-            else None
+            priority_obj if priority_obj and priority_obj.get("name") != "None" else None
         )
 
         severity_field = fields.get("customfield_11010")
         severity = (
-            severity_field.get("value")
-            if isinstance(severity_field, dict)
-            else None
+            severity_field.get("value") if isinstance(severity_field, dict) else None
         )
 
-        missing_any = False
-
+        missing = False
         if not environment:
             stats["environment"] += 1
-            missing_any = True
+            missing = True
         if not priority:
             stats["priority"] += 1
-            missing_any = True
+            missing = True
         if not severity:
             stats["severity"] += 1
-            missing_any = True
+            missing = True
 
-        if missing_any:
+        if missing:
             results.append(issue)
 
     return results, stats
 
 
 # ─────────────────────────────────────────────
-# Slack notification (ENHANCED, SAFE)
+# Slack notification (INITIAL + REMINDER)
 # ─────────────────────────────────────────────
 def trigger_slack(issues, dry_run=True, force=False, message_type="initial"):
     """
     dry_run=True   → preview only (NO Slack, NO dedupe)
     force=True     → resend even if already notified
     message_type:
-        - "initial"  → first-time message
-        - "reminder" → follow-up reminder
+        - initial
+        - reminder
     """
-
     notified = load_notified()
     sent = []
 
     for issue in issues:
         issue_key = issue.get("key")
 
-        # 🔒 DEDUPE ONLY FOR REAL SEND (NOT dry-run, NOT force)
+        # 🔒 DEDUPE ONLY FOR REAL INITIAL SEND
         if not dry_run and not force and issue_key in notified:
             continue
 
@@ -104,16 +123,12 @@ def trigger_slack(issues, dry_run=True, force=False, message_type="initial"):
 
         priority_obj = fields.get("priority")
         priority = (
-            priority_obj
-            if priority_obj and priority_obj.get("name") != "None"
-            else None
+            priority_obj if priority_obj and priority_obj.get("name") != "None" else None
         )
 
         severity_field = fields.get("customfield_11010")
         severity = (
-            severity_field.get("value")
-            if isinstance(severity_field, dict)
-            else None
+            severity_field.get("value") if isinstance(severity_field, dict) else None
         )
 
         missing_fields = []
@@ -137,25 +152,30 @@ def trigger_slack(issues, dry_run=True, force=False, message_type="initial"):
         if not user_id:
             continue
 
-        # ✉️ Message selection
         if message_type == "reminder":
             message = (
                 f"⏰ Hi {name},\n"
-                f"Friendly reminder about Jira bug *{issue_key}* — it’s still missing:\n"
+                f"Reminder: Jira bug *{issue_key}* is still missing:\n"
                 + "\n".join(f"- {f}" for f in missing_fields) +
-                "\n\nPlease update this when you get time 🙏\n"
-                "Thanks!"
+                "\n\nPlease update it when possible 🙏"
             )
+            status = "reminder"
         else:
             message = (
                 f"👋 Hi {name},\n"
-                f"Your Jira bug *{issue_key}* is missing required field(s):\n"
+                f"Your Jira bug *{issue_key}* is missing:\n"
                 + "\n".join(f"- {f}" for f in missing_fields) +
-                "\n\nPlease update it.Thanks🙏"
+                "\n\nPlease update it. Thanks 🙏"
             )
+            status = "sent"
 
         send_dm(user_id, message)
-        notified.add(issue_key)
+
+        notified[issue_key] = {
+            "status": status,
+            "last_sent": datetime.utcnow().isoformat()
+        }
+
         sent.append(issue_key)
 
     # Save ONLY after real sends
