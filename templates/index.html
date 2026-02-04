@@ -12,91 +12,119 @@
     <style>
         :root {
             --jira-blue: #0052CC;
-            --soft-bg: #f4f5f7;
-            --text-dark: #172b4d;
-            --border-color: #dfe1e6;
+            --jira-blue-hover: #0747a6;
+            --soft-bg: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --accent-gradient: linear-gradient(135deg, #0052CC, #2684FF);
         }
         
         body { 
-            background-color: var(--soft-bg); 
+            background: linear-gradient(180deg, var(--soft-bg) 0%, #f1f5f9 100%);
+            min-height: 100vh;
             font-family: 'Inter', sans-serif;
-            color: var(--text-dark);
+            color: var(--text-main);
             -webkit-font-smoothing: antialiased;
         }
 
-        .card { border: 1px solid var(--border-color); border-radius: 12px; transition: box-shadow 0.2s ease; }
-        .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important; }
-        
-        /* ── SMOOTH SCROLLING TABLE ── */
+        /* ── GLASS CARDS ── */
+        .card { 
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 16px; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, box-shadow;
+        }
+        .shadow-sm { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important; }
+
+        /* ── TABLE PERFORMANCE ── */
         .table-responsive { 
             max-height: 700px; 
             overflow-y: auto; 
             scrollbar-width: thin;
-            overscroll-behavior: contain;
+            border-radius: 0 0 16px 16px;
+            contain: layout;
         }
         
         thead th { 
             position: sticky; 
             top: 0; 
-            background: white !important; 
-            z-index: 10; 
+            background: #ffffff !important; 
+            z-index: 20; 
             box-shadow: inset 0 -1px 0 var(--border-color);
-            padding: 12px 16px !important;
-            font-size: 0.85rem;
+            padding: 14px 16px !important;
+            font-size: 0.75rem;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
         }
 
-        /* ── FAST TRANSITIONS ── */
-        tr { transition: background-color 0.15s ease; }
-        tr:hover { background-color: #f0f4ff !important; }
+        /* ── SMOOTH INTERACTION ── */
+        tr { transition: transform 0.2s ease, background-color 0.2s ease; }
+        tr:hover { 
+            background-color: rgba(240, 244, 255, 0.8) !important; 
+            transform: scale(1.002);
+            box-shadow: 0 4px 12px -4px rgba(0,0,0,0.1);
+        }
 
         textarea { 
-            font-family: 'Fira Code', 'Courier New', monospace; 
+            font-family: 'Fira Code', monospace; 
             font-size: 0.9rem; 
             border: 2px solid var(--border-color);
-            transition: border-color 0.2s ease;
-            resize: vertical;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            background: #ffffff;
         }
-        textarea:focus { border-color: var(--jira-blue); box-shadow: 0 0 0 3px rgba(0,82,204,0.15); outline: none; }
+        textarea:focus { 
+            border-color: var(--jira-blue); 
+            box-shadow: 0 0 0 4px rgba(0, 82, 204, 0.1); 
+            outline: none; 
+        }
 
         .btn { 
-            border-radius: 8px; 
+            border-radius: 10px; 
             font-weight: 600; 
+            padding: 10px 20px;
             display: inline-flex; 
             align-items: center; 
-            gap: 8px; 
+            gap: 10px; 
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            border: none;
         }
-        .btn:active { transform: scale(0.97); }
-        .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .btn-primary { background: var(--accent-gradient); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 82, 204, 0.3); }
+        .btn:active { transform: scale(0.96); }
         
-        /* ── BADGES & DATA ── */
-        .badge { font-weight: 600; padding: 0.5em 0.8em; border-radius: 4px; }
+        /* ── DATA STYLING ── */
+        .badge { font-weight: 700; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; }
         .bug-key { 
             color: var(--jira-blue); 
             font-weight: 700; 
-            background: rgba(0, 82, 204, 0.05);
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: #eef2ff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
         }
+        .bug-key:hover { background: var(--jira-blue); color: white; text-decoration: none; }
         
         .summary-cell {
             min-width: 350px;
-            white-space: normal;
-            word-break: break-word;
-            line-height: 1.5;
-            color: #253858;
+            font-size: 0.925rem;
+            line-height: 1.6;
+            color: #1e293b;
         }
 
         .avatar-init {
-            width: 26px; height: 26px; font-size: 11px;
-            background: linear-gradient(135deg, #6b778c, #42526e);
+            width: 28px; height: 28px; font-size: 11px;
+            background: var(--accent-gradient);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
     </style>
 
     <script>
-        // Prevent Unbounded JQL Error
         function validateJQL() {
             const jql = document.getElementById('jql-input').value.trim();
             if (!jql) {
@@ -117,87 +145,95 @@
 
         function updateCount() {
             const count = document.querySelectorAll('.bug-check:checked').length;
-            document.getElementById('check-count').innerText = count;
+            const badge = document.getElementById('check-count');
+            badge.innerText = count;
+            badge.style.transform = 'scale(1.2)';
+            setTimeout(() => badge.style.transform = 'scale(1)', 200);
         }
     </script>
 </head>
 
 <body>
-<div class="container py-4">
+<div class="container py-5">
 
-    <div class="row mb-4">
+    <div class="row mb-5">
         <div class="col-12">
-            <h2 class="fw-bold d-flex align-items-center gap-2 mb-1">
-                <i class="fa-solid fa-shield-check text-primary"></i> 
-                Jira Bug Quality Guard
+            <h2 class="fw-bold d-flex align-items-center gap-3 mb-2" style="letter-spacing: -0.02em;">
+                <i class="fa-solid fa-shield-halved text-primary"></i> 
+                Quality Guard Pro
             </h2>
-            <p class="text-muted mb-0">Automated field validation and Slack reporting for QA hygiene.</p>
+            <p class="text-muted mb-0 fw-medium">Unified command center for Jira data hygiene and Slack reporting.</p>
         </div>
     </div>
 
     <form method="post">
-        <div class="card p-4 shadow-sm mb-4">
-            <div class="mb-3">
-                <label class="form-label fw-bold small text-uppercase text-muted">JQL Query</label>
+        <div class="card p-4 shadow-sm mb-5 border-0">
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-uppercase tracking-wider text-muted">JQL Context</label>
                 <textarea id="jql-input" name="jql" class="form-control" rows="2" 
                           placeholder="project = 'PROJ' AND issuetype = Bug..." required>{{ jql }}</textarea>
             </div>
 
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-3">
                 <button class="btn btn-primary" name="action" value="fetch" onclick="return validateJQL()">
-                    <i class="fa-solid fa-sync"></i> Fetch Issues
+                    <i class="fa-solid fa-bolt-lightning"></i> Sync Issues
                 </button>
-                <div class="vr mx-2 d-none d-lg-block"></div>
+                <div class="vr mx-1 d-none d-lg-block opacity-25"></div>
                 
-                <button class="btn btn-outline-secondary" name="action" value="slack_preview" {% if not bugs %}disabled{% endif %}>
-                    Dry-Run
+                <button class="btn btn-outline-secondary border-2" name="action" value="slack_preview" {% if not bugs %}disabled{% endif %}>
+                    <i class="fa-solid fa-eye"></i> Dry-Run
                 </button>
 
                 <button class="btn btn-danger" name="action" value="slack_send" 
                         onclick="return confirm('Send Slack DMs to ALL bugs?')" {% if not bugs %}disabled{% endif %}>
-                    <i class="fa-solid fa-paper-plane"></i> Notify All
+                    <i class="fa-solid fa-paper-plane-top"></i> Notify All
                 </button>
 
                 <button class="btn btn-warning text-dark" name="action" value="slack_resend" 
                         onclick="return confirmResendSelected()" {% if not bugs %}disabled{% endif %}>
-                    <i class="fa-solid fa-reply-all"></i> Resend Selected
+                    <i class="fa-solid fa-clock-rotate-left"></i> Resend Selected
                 </button>
 
-                <button class="btn btn-success ms-auto" name="action" value="export" {% if not bugs %}disabled{% endif %}>
-                    <i class="fa-solid fa-file-excel"></i> Export
+                <button class="btn btn-success ms-auto shadow-sm" name="action" value="export" {% if not bugs %}disabled{% endif %}>
+                    <i class="fa-solid fa-file-csv"></i> Export Data
                 </button>
             </div>
         </div>
 
         {% if result_message %}
-            <div class="alert alert-primary border-0 shadow-sm d-flex align-items-center gap-3 mb-4" role="alert">
+            <div class="alert alert-primary border-0 shadow-sm d-flex align-items-center gap-3 mb-5 py-3 rounded-4" role="alert">
                 <i class="fa-solid fa-circle-info fa-lg"></i>
-                <div class="fw-medium">{{ result_message }}</div>
+                <div class="fw-semibold">{{ result_message }}</div>
             </div>
         {% endif %}
 
         {% if bugs and bugs|length > 0 %}
-        <div class="card shadow-sm overflow-hidden border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                <span class="fw-bold text-secondary"><i class="fa-solid fa-list-check me-2"></i> Issue List ({{ bugs|length }})</span>
-                <span class="badge bg-dark rounded-pill">Selected: <span id="check-count">0</span></span>
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-4 px-4 d-flex justify-content-between align-items-center border-bottom">
+                <span class="fw-bold text-dark fs-5">
+                    <i class="fa-solid fa-layer-group me-2 text-primary"></i> Current Backlog 
+                    <span class="text-muted fw-normal ms-1">({{ bugs|length }})</span>
+                </span>
+                <span class="badge bg-dark rounded-pill py-2 px-3 shadow-sm transition" id="selection-badge">
+                    Selected: <span id="check-count">0</span>
+                </span>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0 px-4">
                     <thead>
                     <tr>
-                        <th class="ps-4" width="40">
-                            <input class="form-check-input" type="checkbox"
+                        <th class="ps-4" width="60">
+                            <input class="form-check-input shadow-none" type="checkbox"
                                    onclick="document.querySelectorAll('.bug-check').forEach(cb => cb.checked = this.checked); updateCount()">
                         </th>
-                        <th width="120">Key</th>
-                        <th>Summary</th>
-                        <th>Reporter</th>
+                        <th width="140">Reference</th>
+                        <th>Bug Summary</th>
+                        <th>Owner</th>
                         <th>Priority</th>
                         <th>Severity</th>
-                        <th>Status</th>
-                        <th>Notification</th>
+                        <th>Health</th>
+                        <th>Last Action</th>
                     </tr>
                     </thead>
 
@@ -212,7 +248,7 @@
 
                     <tr>
                         <td class="ps-4">
-                            <input type="checkbox" class="form-check-input bug-check" name="selected_keys" value="{{ bug.key }}" onchange="updateCount()">
+                            <input type="checkbox" class="form-check-input bug-check shadow-none" name="selected_keys" value="{{ bug.key }}" onchange="updateCount()">
                         </td>
 
                         <td>
@@ -221,14 +257,14 @@
                             </a>
                         </td>
 
-                        <td class="summary-cell fw-medium">{{ bug.fields.summary }}</td>
+                        <td class="summary-cell fw-semibold">{{ bug.fields.summary }}</td>
 
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <div class="rounded-circle avatar-init text-white d-flex align-items-center justify-content-center fw-bold">
                                     {{ bug.fields.reporter.displayName[0] }}
                                 </div>
-                                <span class="text-nowrap small fw-medium">{{ bug.fields.reporter.displayName }}</span>
+                                <span class="text-nowrap small fw-bold text-secondary">{{ bug.fields.reporter.displayName }}</span>
                             </div>
                         </td>
 
@@ -236,7 +272,7 @@
                             {% if priority %}
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ priority }}</span>
                             {% else %}
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Missing</span>
+                                <span class="badge bg-danger-subtle text-danger">Missing</span>
                             {% endif %}
                         </td>
 
@@ -244,29 +280,33 @@
                             {% if severity %}
                                 <span class="badge bg-info-subtle text-info border border-info-subtle">{{ severity }}</span>
                             {% else %}
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Missing</span>
+                                <span class="badge bg-danger-subtle text-danger">Missing</span>
                             {% endif %}
                         </td>
 
                         <td>
                             {% if missing %}
-                                <span class="text-warning fw-bold small">
-                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ missing | join(", ") }}
+                                <span class="text-warning fw-bold small d-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> {{ missing | join(", ") }}
                                 </span>
                             {% else %}
-                                <span class="text-success fw-bold small">
-                                    <i class="fa-solid fa-check-circle me-1"></i> Perfect
+                                <span class="text-success fw-bold small d-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-circle-check"></i> Compliant
                                 </span>
                             {% endif %}
                         </td>
 
                         <td>
                             {% if bug.notify_status == "sent" %}
-                                <span class="text-success small fw-bold"><i class="fa-solid fa-check-double"></i> Sent</span>
+                                <span class="text-success small fw-bold d-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-check-double"></i> Notified
+                                </span>
                             {% elif bug.notify_status == "reminder" %}
-                                <span class="text-warning small fw-bold"><i class="fa-solid fa-clock-rotate-left"></i> Reminder</span>
+                                <span class="text-warning small fw-bold d-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-clock-rotate-left"></i> Reminded
+                                </span>
                             {% else %}
-                                <span class="text-muted small">--</span>
+                                <span class="text-muted small fw-medium">No action</span>
                             {% endif %}
                         </td>
                     </tr>
